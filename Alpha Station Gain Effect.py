@@ -22,7 +22,7 @@ sensorFolder = []
 pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W8_pin\\150V'
 pinSensorFolder = []
 sensorName = 'FBK Space Sensor W8 200V vs W8 Pin 150V'
-skip = 4 #How many files to skip to make data processing faster, Ex: skip = 1 increments by 1, meaning all data will be processed
+skip = 5 #How many files to skip to make data processing faster, Ex: skip = 1 increments by 1, meaning all data will be processed
 resistance = 470
 
 os.chdir(sensorDirectory)
@@ -37,7 +37,7 @@ for x in os.listdir(): #Creates a list of the folder names in the pin sensor dir
 
 print(pinSensorFolder)
 
-def getData(folder, directory, skip = skip): #Gets the data from an inputted folder
+def getData(folder, directory, skip = skip, lowerBound = -1, upperBound = 3): #Gets the data from an inputted folder
     files = []
     os.chdir(directory)
 
@@ -70,16 +70,26 @@ def getData(folder, directory, skip = skip): #Gets the data from an inputted fol
         #print(time)
         
         baselineVoltage = []
-        for j in range(0, len(time), 10):
+        for j in range(len(time)):
             if(time[j] > -10 and time[j] < -1.5):
                 baselineVoltage.append(voltage[j]) #Appends the voltages for times > 10 and < -1.5 ns to baselineVoltage
         
         meanBaselineVoltage = np.mean(baselineVoltage) #Calculates the average baseline voltage for each data frame in data
         correctedVoltage = voltage - meanBaselineVoltage #Corrects the voltage based off the average baseline voltage
+
+        integrationTime = []
+        integrationVoltage = []
+        for j in range(len(time)):
+            if(time[j] > lowerBound and time[j] < upperBound):
+                integrationTime.append(time[j])
+                integrationVoltage.append(correctedVoltage[j])
+            else:
+                continue
+        
         #maxVoltage = np.max(correctedVoltage) #Finds the maximum corrected voltage
         #maxVoltages.append(maxVoltage)
 
-        charge = auc(time, correctedVoltage)/resistance #Integrates the current I = V/R with respect to time
+        charge = auc(integrationTime, integrationVoltage)/resistance #Integrates the current I = V/R with respect to time
         charges.append(charge) #Appends the charge for each file to list charges
     
     return charges #Returns a list of charges for the files read
@@ -91,7 +101,7 @@ def gaussianFit(x, amplitude, mu, sigma):
 colours = ['r', 'g', 'b', 'c', 'm', 'y'] #Colours to be used when plotting
 def histogramPlot(folder, directory, numBins = 200, skip = skip, meanDiff = 0, rmsDiff = 0): #Used for iterating over entire directory and the folders inside of it
     for i in range(len(folder)): #Iterates over every folder in the directory
-        charges = getData(folder[i], directory, skip) #Gathers the charges from each folder in the directory
+        charges = getData(folder[i], directory, skip, -1, 3) #Gathers the charges from each folder in the directory
         charges = [charge - meanDiff for charge in charges] #Subtracts meanDiff from each charge in charges
         plt.hist(x = charges, density = False, bins = numBins, color = colours[i], histtype= 'step') #Creates a histogram for the charges
 
@@ -117,7 +127,7 @@ def pinHistogramPlot(folder, directory, numBins = 200, skip = skip, combineFolde
         combinedPinSensorCharges = []
         print('Starting combined sensors')
         for i in range(len(folder)):
-            pinSensorCharges.append(getData(folder[i], directory, skip))
+            pinSensorCharges.append(getData(folder[i], directory, skip, -1, 3))
         for i in pinSensorCharges:
             combinedPinSensorCharges += i
         
@@ -143,10 +153,10 @@ def pinHistogramPlot(folder, directory, numBins = 200, skip = skip, combineFolde
 
 #print(getData(pinSensorFolder[0], pinSensorDirectory))
 
-pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, 1, False)
-meanDiff, rmsDiff = pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, 1, True)
+pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, 10, False)
+meanDiff, rmsDiff = pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, 10, True)
 print(f'{meanDiff=}, {rmsDiff=}')
-histogramPlot(sensorFolder, sensorDirectory, 200, 1)#, meanDiff, rmsDiff)
+histogramPlot(sensorFolder, sensorDirectory, 200, 50)#, meanDiff, rmsDiff)
 plt.title(sensorName)
 plt.xlabel('Charge (pC)')
 plt.ylabel('Frequency')
