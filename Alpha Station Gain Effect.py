@@ -17,13 +17,16 @@ import pandas as pd
 import scipy as sp
 from sklearn.metrics import auc
 
-sensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W8\\200V'
+sensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W14\\200V'
 sensorFolder = []
-pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W8_pin\\150V'
+pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W14_pin\\150V'
 pinSensorFolder = []
-sensorName = 'FBK Space Sensor W8 200V vs W8 Pin 150V'
-skip = 5 #How many files to skip to make data processing faster, Ex: skip = 1 increments by 1, meaning all data will be processed
+sensorName = 'FBK Space Sensor W14 200V vs W14 Pin 150V'
+skip = 1 #How many files to skip to make data processing faster, Ex: skip = 1 increments by 1, meaning all data will be processed
+pinSkip = 1
 resistance = 470
+lowerBound = -1
+upperBound = 3
 
 os.chdir(sensorDirectory)
 for x in os.listdir(): #Creates a list of the folder names in the sensor directory
@@ -37,7 +40,7 @@ for x in os.listdir(): #Creates a list of the folder names in the pin sensor dir
 
 print(pinSensorFolder)
 
-def getData(folder, directory, skip = skip, lowerBound = -1, upperBound = 3): #Gets the data from an inputted folder
+def getData(folder, directory, skip = skip, lowerBound = lowerBound, upperBound = upperBound): #Gets the data from an inputted folder
     files = []
     os.chdir(directory)
 
@@ -99,10 +102,11 @@ def gaussianFit(x, amplitude, mu, sigma):
     return y
 
 colours = ['r', 'g', 'b', 'c', 'm', 'y'] #Colours to be used when plotting
-def histogramPlot(folder, directory, numBins = 200, skip = skip, meanDiff = 0, rmsDiff = 0): #Used for iterating over entire directory and the folders inside of it
+pinColours = ['lime', 'lightsteelblue', 'orange', 'teal', 'olive', 'k']
+def histogramPlot(folder, directory, numBins = 200, skip = skip, meanDiff = 1, rmsDiff = 1, isPin = False): #Used for iterating over entire directory and the folders inside of it
     for i in range(len(folder)): #Iterates over every folder in the directory
         charges = getData(folder[i], directory, skip, -1, 3) #Gathers the charges from each folder in the directory
-        charges = [charge - meanDiff for charge in charges] #Subtracts meanDiff from each charge in charges
+        charges = [charge / meanDiff for charge in charges] #Subtracts meanDiff from each charge in charges
         plt.hist(x = charges, density = False, bins = numBins, color = colours[i], histtype= 'step') #Creates a histogram for the charges
 
         print('Plotting data from: ' + folder[i])
@@ -114,11 +118,15 @@ def histogramPlot(folder, directory, numBins = 200, skip = skip, meanDiff = 0, r
 
         gaussianFitParameters, gaussianFitUncertainties = sp.optimize.curve_fit(gaussianFit, nonZeroBins, nonZeroFrequencies) #Gathers the parameters and their uncertainties for a gaussian fit given the input bins and frequencies
         meanCharge = f'{gaussianFitParameters[1]:.5f}' #Truncates the mean charge and RMS
-        meanChargeRMS = f'{np.sqrt(gaussianFitParameters[2]**2 + rmsDiff**2):.5f}'
+        meanChargeRMS = f'{gaussianFitParameters[1] * rmsDiff / meanDiff:.5f}' #RMS = mean * pin RMS / pin mean
         fileLabel = folder[i][folder[i].rfind('_') + 1:] + ', mean = ' + meanCharge + ' pC, rms = ' + meanChargeRMS + ', ' + str(len(charges)) + ' pulses' #Creates the label for the legend
         xFit = np.linspace(nonZeroBins[0], nonZeroBins[-1], 200) #Creates a linear space from the lowest to highest non zero frequency bin
         yFit = gaussianFit(xFit, *gaussianFitParameters) #Creates the gaussian fit for the parameters estimated by curve_fit
-        plt.plot(xFit, yFit, lw = 1, color = colours[i], label=fileLabel) #Plots the gaussian fit
+        
+        if(isPin == True):
+            plt.plot(xFit, yFit, lw = 1, color = pinColours[i], label=fileLabel) #Plots the gaussian fit
+        else:
+            plt.plot(xFit, yFit, lw = 1, color = colours[i], label=fileLabel)
         #print(gaussianFitParameters, gaussianFitUncertainties)
 
 def pinHistogramPlot(folder, directory, numBins = 200, skip = skip, combineFolders = True): #Used for combining folders and returning the mean and RMS
@@ -131,9 +139,9 @@ def pinHistogramPlot(folder, directory, numBins = 200, skip = skip, combineFolde
         for i in pinSensorCharges:
             combinedPinSensorCharges += i
         
-        print('Plotting combined sensors')
+        #print('Plotting combined sensors')
         
-        plt.hist(x = combinedPinSensorCharges, density = False, bins = numBins, color = colours[-1], histtype= 'step') #Creates a histogram for the charges
+        #plt.hist(x = combinedPinSensorCharges, density = False, bins = numBins, color = pinColours[-1], histtype= 'step') #Creates a histogram for the charges
 
         frequencies, bins = np.histogram(combinedPinSensorCharges, numBins) #Creates a numerical list of frequencies and their corresponding bins for the charges
         nonZeroIndices = np.where(frequencies>0)[0] #Creates a list of the indices where there are non zero frequencies for a bin
@@ -146,20 +154,21 @@ def pinHistogramPlot(folder, directory, numBins = 200, skip = skip, combineFolde
         fileLabel = 'Combined, mean = ' + meanCharge + ' pC, rms = ' + meanChargeRMS + ', ' + str(len(combinedPinSensorCharges)) + ' pulses' #Creates the label for the legend
         xFit = np.linspace(nonZeroBins[0], nonZeroBins[-1], 200) #Creates a linear space from the lowest to highest non zero frequency bin
         yFit = gaussianFit(xFit, *gaussianFitParameters) #Creates the gaussian fit for the parameters estimated by curve_fit
-        plt.plot(xFit, yFit, lw = 1, color = colours[-1], label=fileLabel) #Plots the gaussian fit
-        return gaussianFitParameters[1], gaussianFitParameters[2]
+        #plt.plot(xFit, yFit, lw = 1, color = colours[-1], label=fileLabel) #Plots the gaussian fit
+        return gaussianFitParameters[1], gaussianFitParameters[2] #Returns the mean and uncertainty respectively
     else:
-        histogramPlot(folder, directory, numBins, skip)
+        histogramPlot(folder, directory, numBins, skip, 1, 1, True)
 
 #print(getData(pinSensorFolder[0], pinSensorDirectory))
 
-pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, 10, False)
-meanDiff, rmsDiff = pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, 10, True)
+#pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, pinSkip, False)
+meanDiff, rmsDiff = pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, skip, True)
 print(f'{meanDiff=}, {rmsDiff=}')
-histogramPlot(sensorFolder, sensorDirectory, 200, 50)#, meanDiff, rmsDiff)
+#histogramPlot(sensorFolder, sensorDirectory, 200, skip)
+histogramPlot(sensorFolder, sensorDirectory, 200, skip, meanDiff, rmsDiff)
 plt.title(sensorName)
 plt.xlabel('Charge (pC)')
 plt.ylabel('Frequency')
-plt.legend(loc = 'upper left', fontsize =  14)
+plt.legend(loc = 'upper left', fontsize =  10)
 #plt.savefig(sensorDirectory + '\\' + sensorName)
 plt.show()
