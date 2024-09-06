@@ -31,6 +31,14 @@ for x in os.listdir(): #Creates a list of the folder names in the pin sensor dir
 print(pinSensorFolder)
 
 def getData(folder, directory, skip = skip, lowerBound = lowerBound, upperBound = upperBound): #Gets the data from an inputted folder
+    """
+    getData takes an input directory that has a list of folders within it and takes data from each of those folders in the directory.
+    It takes an input skip that will determine how many files it will retrieve data from within each folder. Ex: skip = 1 means it will take data from each file,
+    while skip = 2 means it will take data from every 2 files. From each file, it will extract the voltage and the corresponding time for the period -10 to 10 ns
+    It will calculate the average voltage meanBaselineVoltage from the voltages within the period -10 to -1.5 ns and subtract that voltage from all of the voltages.
+    Using this corrected voltage, the function will integrate voltage with respect to time to obtain charge (pC) within the time range of lowerBound to upperBound.
+    Finally, it returns the list of charges calculated.
+    """
     files = []
     os.chdir(directory)
 
@@ -54,7 +62,7 @@ def getData(folder, directory, skip = skip, lowerBound = lowerBound, upperBound 
     #print(data[0]['Voltage'])
 
     #maxVoltages = []
-    
+    print('Calculating charge')
     charges = []
     for i in range(0, len(data)):
         time = data[i]['Time'] * 1e9 #Accessing time and voltage from the list data and converting to ns and mV respectively
@@ -88,22 +96,37 @@ def getData(folder, directory, skip = skip, lowerBound = lowerBound, upperBound 
     return charges #Returns a list of charges for the files read
 
 def gaussianFit(x, amplitude, mu, sigma):
+    """
+    gaussianFit defines the equation for the gaussian distribution so that it may be called by curve_fit.
+    """
     y = amplitude * np.exp(-(x - mu)**2 / (2 * sigma**2)) #Defines the gaussian function to be used in the curve fitting
     return y
 
 colours = cm.rainbow(np.linspace(0,1,11)) #Colours to be used when plotting
 def histogramPlot(folder, directory, numBins = 200, skip = skip, pinMeanDiff = 1, pinrmsDiff = 0, isPin = False): #Used for iterating over entire directory and the folders inside of it
+    """
+    histogramPlot takes an input directory and a list of folders within it to plot the gain of the sensor on a rainbow colour map scaling. 
+    It uses numBins to calculate the histogram and gaussian fit. The function calls getData using the folder, directory, and skip to obtain charges.
+    These charges and numBins are then used to call fitCurve to obtain a gaussian distribution of the raw data. Then, the function will calculate the upper and lower bounds
+    within a certain standard deviation sdDiff range. It will trim all charges that do not fall within such range and then refit the gaussian distribution of the new data.
+    From the trimmed charges, it will divide by the pin sensor's average charge pinMeanDiff and obtain a list of gains. Then, it fits the gaussian distribtuion of the resulting gain
+    and propagates the error to obtain the gain's uncertainty. Finally, it plots a histogram of the gain as well as the gaussian distribution. 
+    """
     for i in range(len(folder)): #Iterates over every folder in the directory
         charges = getData(folder[i], directory, skip, lowerBound, upperBound) #Gathers the charges from each folder in the directory
+        print('First gaussian fit on charge')
         lgadGaussianFitParameters, nonZeroBins = fitCurve(charges, numBins) #Finds the gaussian fit parameters from the lgad charges
         sdAdd = lgadGaussianFitParameters[1] + (sdDiff * lgadGaussianFitParameters[2]) #Finds the minimum and maximum allowed values that will fit within the sdDiff sigma range
         sdSub = lgadGaussianFitParameters[1] - (sdDiff * lgadGaussianFitParameters[2])
         sdCharges = []
+        print('Trimming data')
         for charge in charges:
             if sdSub <= charge and charge <= sdAdd:
                 sdCharges.append(charge)
+        print('Second gaussian fit on data')
         lgadGaussianFitParameters, nonZeroBins = fitCurve(sdCharges, numBins)
-
+        
+        print('Calculating gain')
         charges = [charge / pinMeanDiff for charge in sdCharges] #Divides meanDiff from each charge in charges to obtain gain
         plt.hist(x = charges, density = False, bins = numBins, color = colours[i], histtype= 'step') #Creates a histogram for the charges
         print('Plotting data from: ' + folder[i])
@@ -122,6 +145,10 @@ def histogramPlot(folder, directory, numBins = 200, skip = skip, pinMeanDiff = 1
         #print(gaussianFitParameters, gaussianFitUncertainties)
 
 def pinHistogramPlot(folder, directory, numBins = 200, skip = skip, combineFolders = True): #Used for combining folders and returning the mean and RMS
+    """
+    pinHistogramPlot does almost the same as histogramPlot except it combines the folders within the directory as the data for pin sensors does not change much
+    for differing angles. However, pinHistogramPlot can be called with combineFolders = False which calls histogramPlot.
+    """
     if(combineFolders == True):
         pinSensorCharges = []
         combinedPinSensorCharges = []
@@ -152,12 +179,15 @@ def pinHistogramPlot(folder, directory, numBins = 200, skip = skip, combineFolde
         histogramPlot(folder, directory, numBins, skip, 1, 1, True)
 
 def fitCurve(charges, numBins):
+    """
+    fitCurve takes an input list charges and numBins to fit a gaussian distribution of the data charges for a numBins amount of bins.
+    """
     frequencies, bins = np.histogram(charges, numBins) #Creates a numerical list of frequencies and their corresponding bins for the new charges
     nonZeroIndices = np.where(frequencies>0)[0] #Creates a list of the indices where there are non zero frequencies for a bin
     nonZeroFrequencies = frequencies[nonZeroIndices] #Creates list of non zero frequencies in the histogram and their corresponding bins
     nonZeroBins = bins[nonZeroIndices]
     gaussianFitParameters, gaussianFitUncertainties = sp.optimize.curve_fit(gaussianFit, nonZeroBins, nonZeroFrequencies) #Gathers the parameters and their uncertainties for a gaussian fit given the input bins and frequencies
-    if(gaussianFitParameters[2] <= 0):
+    if(gaussianFitParameters[2] <= 0): #Takes the absolute value of uncertainty as curve_fit can return a negative value and break the code
         gaussianFitParameters[2] = abs(gaussianFitParameters[2])
     return gaussianFitParameters, nonZeroBins
 
