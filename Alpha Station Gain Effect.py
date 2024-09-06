@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import scipy as sp
 from sklearn.metrics import auc
+from matplotlib.pyplot import cm
 
 sensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W14\\300V'
 sensorFolder = []
@@ -14,7 +15,7 @@ skip = 10 #How many files to skip to make data processing faster, Ex: skip = 1 i
 pinSkip = 1
 resistance = 470
 lowerBound = -1
-upperBound = 3
+upperBound = 6
 sdDiff = 3
 
 os.chdir(sensorDirectory)
@@ -90,8 +91,7 @@ def gaussianFit(x, amplitude, mu, sigma):
     y = amplitude * np.exp(-(x - mu)**2 / (2 * sigma**2)) #Defines the gaussian function to be used in the curve fitting
     return y
 
-colours = ['r', 'g', 'b', 'c', 'm', 'y'] #Colours to be used when plotting
-pinColours = ['lime', 'lightsteelblue', 'orange', 'teal', 'olive', 'k']
+colours = cm.rainbow(np.linspace(0,1,11)) #Colours to be used when plotting
 def histogramPlot(folder, directory, numBins = 200, skip = skip, pinMeanDiff = 1, pinrmsDiff = 0, isPin = False): #Used for iterating over entire directory and the folders inside of it
     for i in range(len(folder)): #Iterates over every folder in the directory
         charges = getData(folder[i], directory, skip, lowerBound, upperBound) #Gathers the charges from each folder in the directory
@@ -116,7 +116,7 @@ def histogramPlot(folder, directory, numBins = 200, skip = skip, pinMeanDiff = 1
         yFit = gaussianFit(xFit, *gaussianFitParameters) #Creates the gaussian fit for the parameters estimated by curve_fit
         
         if(isPin == True):
-            plt.plot(xFit, yFit, lw = 1, color = pinColours[i], label=fileLabel) #Plots the gaussian fit
+            plt.plot(xFit, yFit, lw = 1, color = colours[-i-2], label=fileLabel) #Plots the gaussian fit
         else:
             plt.plot(xFit, yFit, lw = 1, color = colours[i], label=fileLabel)
         #print(gaussianFitParameters, gaussianFitUncertainties)
@@ -133,7 +133,7 @@ def pinHistogramPlot(folder, directory, numBins = 200, skip = skip, combineFolde
         
         #print('Plotting combined sensors')
         
-        #plt.hist(x = combinedPinSensorCharges, density = False, bins = numBins, color = pinColours[-1], histtype= 'step') #Creates a histogram for the charges
+        #plt.hist(x = combinedPinSensorCharges, density = False, bins = numBins, color = colours[-1], histtype= 'step') #Creates a histogram for the charges
 
         frequencies, bins = np.histogram(combinedPinSensorCharges, numBins) #Creates a numerical list of frequencies and their corresponding bins for the charges
         nonZeroIndices = np.where(frequencies>0)[0] #Creates a list of the indices where there are non zero frequencies for a bin
