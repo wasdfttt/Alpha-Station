@@ -1,15 +1,3 @@
-#Find the gain of each sensor
-#Pin sensor is without the gain layer
-#Combine the pin sensors data all into one
-#Find the mean and rms of the combined pin sensors data
-#Subtract the mean and rms from the normal sensor at each angle
-#Focusing on just the charge
-
-#RMS on RMS
-
-#W8 300V corrupted
-#W14 corrupted
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
