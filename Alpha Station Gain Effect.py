@@ -17,16 +17,17 @@ import pandas as pd
 import scipy as sp
 from sklearn.metrics import auc
 
-sensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W14\\200V'
+sensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W14\\300V'
 sensorFolder = []
-pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W14_pin\\150V'
+pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W14_pin\\250V'
 pinSensorFolder = []
-sensorName = 'FBK Space Sensor W14 200V vs W14 Pin 150V'
-skip = 1 #How many files to skip to make data processing faster, Ex: skip = 1 increments by 1, meaning all data will be processed
+sensorName = 'FBK Space Sensor W14 300V vs W14 Pin 250V Gain'
+skip = 10 #How many files to skip to make data processing faster, Ex: skip = 1 increments by 1, meaning all data will be processed
 pinSkip = 1
 resistance = 470
 lowerBound = -1
 upperBound = 3
+sdDiff = 3
 
 os.chdir(sensorDirectory)
 for x in os.listdir(): #Creates a list of the folder names in the sensor directory
@@ -103,22 +104,25 @@ def gaussianFit(x, amplitude, mu, sigma):
 
 colours = ['r', 'g', 'b', 'c', 'm', 'y'] #Colours to be used when plotting
 pinColours = ['lime', 'lightsteelblue', 'orange', 'teal', 'olive', 'k']
-def histogramPlot(folder, directory, numBins = 200, skip = skip, meanDiff = 1, rmsDiff = 1, isPin = False): #Used for iterating over entire directory and the folders inside of it
+def histogramPlot(folder, directory, numBins = 200, skip = skip, pinMeanDiff = 1, pinrmsDiff = 0, isPin = False): #Used for iterating over entire directory and the folders inside of it
     for i in range(len(folder)): #Iterates over every folder in the directory
-        charges = getData(folder[i], directory, skip, -1, 3) #Gathers the charges from each folder in the directory
-        charges = [charge / meanDiff for charge in charges] #Subtracts meanDiff from each charge in charges
+        charges = getData(folder[i], directory, skip, lowerBound, upperBound) #Gathers the charges from each folder in the directory
+        lgadGaussianFitParameters, nonZeroBins = fitCurve(charges, numBins) #Finds the gaussian fit parameters from the lgad charges
+        sdAdd = lgadGaussianFitParameters[1] + (sdDiff * lgadGaussianFitParameters[2]) #Finds the minimum and maximum allowed values that will fit within the sdDiff sigma range
+        sdSub = lgadGaussianFitParameters[1] - (sdDiff * lgadGaussianFitParameters[2])
+        sdCharges = []
+        for charge in charges:
+            if sdSub <= charge and charge <= sdAdd:
+                sdCharges.append(charge)
+        lgadGaussianFitParameters, nonZeroBins = fitCurve(sdCharges, numBins)
+
+        charges = [charge / pinMeanDiff for charge in sdCharges] #Divides meanDiff from each charge in charges to obtain gain
         plt.hist(x = charges, density = False, bins = numBins, color = colours[i], histtype= 'step') #Creates a histogram for the charges
-
         print('Plotting data from: ' + folder[i])
-
-        frequencies, bins = np.histogram(charges, numBins) #Creates a numerical list of frequencies and their corresponding bins for the charges
-        nonZeroIndices = np.where(frequencies>0)[0] #Creates a list of the indices where there are non zero frequencies for a bin
-        nonZeroFrequencies = frequencies[nonZeroIndices] #Creates list of non zero frequencies in the histogram and their corresponding bins
-        nonZeroBins = bins[nonZeroIndices]
-
-        gaussianFitParameters, gaussianFitUncertainties = sp.optimize.curve_fit(gaussianFit, nonZeroBins, nonZeroFrequencies) #Gathers the parameters and their uncertainties for a gaussian fit given the input bins and frequencies
+        gaussianFitParameters, nonZeroBins = fitCurve(charges, numBins) #Finds the gaussian fit parameters from the gain
+        
         meanCharge = f'{gaussianFitParameters[1]:.5f}' #Truncates the mean charge and RMS
-        meanChargeRMS = f'{gaussianFitParameters[1] * rmsDiff / meanDiff:.5f}' #RMS = mean * pin RMS / pin mean
+        meanChargeRMS = f'{gaussianFitParameters[1] * np.sqrt((pinrmsDiff / pinMeanDiff)**2 + (lgadGaussianFitParameters[2] / lgadGaussianFitParameters[1])**2):.5f}' #RMS = mean * sqrt[(pin RMS/pin mean)^2 + (LGAD RMS/LGAD mean)^2]
         fileLabel = folder[i][folder[i].rfind('_') + 1:] + ', mean = ' + meanCharge + ' pC, rms = ' + meanChargeRMS + ', ' + str(len(charges)) + ' pulses' #Creates the label for the legend
         xFit = np.linspace(nonZeroBins[0], nonZeroBins[-1], 200) #Creates a linear space from the lowest to highest non zero frequency bin
         yFit = gaussianFit(xFit, *gaussianFitParameters) #Creates the gaussian fit for the parameters estimated by curve_fit
@@ -159,15 +163,23 @@ def pinHistogramPlot(folder, directory, numBins = 200, skip = skip, combineFolde
     else:
         histogramPlot(folder, directory, numBins, skip, 1, 1, True)
 
-#print(getData(pinSensorFolder[0], pinSensorDirectory))
+def fitCurve(charges, numBins):
+    frequencies, bins = np.histogram(charges, numBins) #Creates a numerical list of frequencies and their corresponding bins for the new charges
+    nonZeroIndices = np.where(frequencies>0)[0] #Creates a list of the indices where there are non zero frequencies for a bin
+    nonZeroFrequencies = frequencies[nonZeroIndices] #Creates list of non zero frequencies in the histogram and their corresponding bins
+    nonZeroBins = bins[nonZeroIndices]
+    gaussianFitParameters, gaussianFitUncertainties = sp.optimize.curve_fit(gaussianFit, nonZeroBins, nonZeroFrequencies) #Gathers the parameters and their uncertainties for a gaussian fit given the input bins and frequencies
+    if(gaussianFitParameters[2] <= 0):
+        gaussianFitParameters[2] = abs(gaussianFitParameters[2])
+    return gaussianFitParameters, nonZeroBins
 
 #pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, pinSkip, False)
-meanDiff, rmsDiff = pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, skip, True)
-print(f'{meanDiff=}, {rmsDiff=}')
+pinMeanDiff, pinrmsDiff = pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, skip, True)
+#lgadMeanDiff, lgadrmsDiff = getLGADGaussianParameters(sensorFolder, sensorDirectory, 200, skip)
 #histogramPlot(sensorFolder, sensorDirectory, 200, skip)
-histogramPlot(sensorFolder, sensorDirectory, 200, skip, meanDiff, rmsDiff)
+histogramPlot(sensorFolder, sensorDirectory, 200, skip, pinMeanDiff, pinrmsDiff)
 plt.title(sensorName)
-plt.xlabel('Charge (pC)')
+plt.xlabel('Gain')
 plt.ylabel('Frequency')
 plt.legend(loc = 'upper left', fontsize =  10)
 #plt.savefig(sensorDirectory + '\\' + sensorName)
