@@ -11,7 +11,7 @@ sensorFolder = []
 pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W14_pin\\250V'
 pinSensorFolder = []
 sensorName = 'FBK Space Sensor W14 300V vs W14 Pin 250V Gain'
-skip = 10 #How many files to skip to make data processing faster, Ex: skip = 1 increments by 1, meaning all data will be processed
+skip = 1 #How many files to skip to make data processing faster, Ex: skip = 1 increments by 1, meaning all data will be processed
 pinSkip = 1
 resistance = 470
 lowerBound = -1
@@ -102,7 +102,7 @@ def gaussianFit(x, amplitude, mu, sigma):
     y = amplitude * np.exp(-(x - mu)**2 / (2 * sigma**2)) #Defines the gaussian function to be used in the curve fitting
     return y
 
-colours = cm.rainbow(np.linspace(0,1,11)) #Colours to be used when plotting
+colours = cm.rainbow(np.linspace(0,1,6)) #Colours to be used when plotting
 def histogramPlot(folder, directory, numBins = 200, skip = skip, pinMeanDiff = 1, pinrmsDiff = 0, isPin = False): #Used for iterating over entire directory and the folders inside of it
     """
     histogramPlot takes an input directory and a list of folders within it to plot the gain of the sensor on a rainbow colour map scaling. 
@@ -134,14 +134,14 @@ def histogramPlot(folder, directory, numBins = 200, skip = skip, pinMeanDiff = 1
         
         meanCharge = f'{gaussianFitParameters[1]:.5f}' #Truncates the mean charge and RMS
         meanChargeRMS = f'{gaussianFitParameters[1] * np.sqrt((pinrmsDiff / pinMeanDiff)**2 + (lgadGaussianFitParameters[2] / lgadGaussianFitParameters[1])**2):.5f}' #RMS = mean * sqrt[(pin RMS/pin mean)^2 + (LGAD RMS/LGAD mean)^2]
-        fileLabel = folder[i][folder[i].rfind('_') + 1:] + ', mean = ' + meanCharge + ' pC, rms = ' + meanChargeRMS + ', ' + str(len(charges)) + ' pulses' #Creates the label for the legend
+        fileLabel = folder[i][folder[i].rfind('_') + 1:] + ', mean = ' + meanCharge + ', rms = ' + meanChargeRMS + ', ' + str(len(charges)) + ' pulses' #Creates the label for the legend
         xFit = np.linspace(nonZeroBins[0], nonZeroBins[-1], 200) #Creates a linear space from the lowest to highest non zero frequency bin
         yFit = gaussianFit(xFit, *gaussianFitParameters) #Creates the gaussian fit for the parameters estimated by curve_fit
         
         if(isPin == True):
-            plt.plot(xFit, yFit, lw = 1, color = colours[-i-2], label=fileLabel) #Plots the gaussian fit
+            plt.plot(xFit, yFit, lw = 2, color = colours[-i-2], label=fileLabel) #Plots the gaussian fit
         else:
-            plt.plot(xFit, yFit, lw = 1, color = colours[i], label=fileLabel)
+            plt.plot(xFit, yFit, lw = 2, color = colours[i], label=fileLabel)
         #print(gaussianFitParameters, gaussianFitUncertainties)
 
 def pinHistogramPlot(folder, directory, numBins = 200, skip = skip, combineFolders = True): #Used for combining folders and returning the mean and RMS
@@ -170,7 +170,7 @@ def pinHistogramPlot(folder, directory, numBins = 200, skip = skip, combineFolde
         gaussianFitParameters, gaussianFitUncertainties = sp.optimize.curve_fit(gaussianFit, nonZeroBins, nonZeroFrequencies) #Gathers the parameters and their uncertainties for a gaussian fit given the input bins and frequencies
         meanCharge = f'{gaussianFitParameters[1]:.5f}' #Truncates the mean charge and RMS
         meanChargeRMS = f'{gaussianFitParameters[2]:.5f}'
-        fileLabel = 'Combined, mean = ' + meanCharge + ' pC, rms = ' + meanChargeRMS + ', ' + str(len(combinedPinSensorCharges)) + ' pulses' #Creates the label for the legend
+        fileLabel = 'Combined, mean = ' + meanCharge + ', rms = ' + meanChargeRMS + ', ' + str(len(combinedPinSensorCharges)) + ' pulses' #Creates the label for the legend
         xFit = np.linspace(nonZeroBins[0], nonZeroBins[-1], 200) #Creates a linear space from the lowest to highest non zero frequency bin
         yFit = gaussianFit(xFit, *gaussianFitParameters) #Creates the gaussian fit for the parameters estimated by curve_fit
         #plt.plot(xFit, yFit, lw = 1, color = colours[-1], label=fileLabel) #Plots the gaussian fit
@@ -201,4 +201,5 @@ plt.xlabel('Gain')
 plt.ylabel('Frequency')
 plt.legend(loc = 'upper left', fontsize =  10)
 #plt.savefig(sensorDirectory + '\\' + sensorName)
+plt.tight_layout()
 plt.show()
