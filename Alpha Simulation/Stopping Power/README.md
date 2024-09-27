@@ -1,0 +1,2 @@
+# Alpha Simulation For Stopping Power
+This folder contains the alpha simulations for determining the stopping distance of the alpha particles emitted by the source that are deposited in a silicon detector at varying distances from 0.0 mm to 30.0 mm away from the source.

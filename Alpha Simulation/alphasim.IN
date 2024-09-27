@@ -1,0 +1,59 @@
+* MultipleScattering.g4bl TJR 1-FEB-2006 mu+ scattering
+#
+# Multiple scattering and ionization energy loss in materials.
+#
+# lengths are mm; momentum is MeV/c, density is gm/cm^3
+
+#c:\Users\chris\OneDrive\Desktop\Alphasim
+#"c:\Program Files\Muons, Inc\G4beamline\bin\g4bl" alphasim.IN
+#"c:\Program Files\Muons, Inc\G4beamline\bin\g4bl" - help
+
+physics QGSP_BIC
+material mair AIR,1 density=0.0001207
+
+param worldMaterial=mair
+param -unset length=20 filename="Polycone .75mmx1mm 20mm 0 deg hit or miss" radius=.75 radius2=1
+
+#param -unset length=18 xOffset=0 filename="Collum .5mmx50mm 18mm 0 deg 0.0mm offset" radius=.5
+
+#param -unset length=20 filename="Collum .5mmx50mm 20mm 0 deg hit or miss"
+
+#param -unset length=18 filename="Collum .5mmx50mm 18mm 0 deg 1.0mm cover" radius=1.0
+param length=$length dist=5.4 filename=$filename
+#dist=$length/2+5.4 for cyl
+$dist=5.4 for polycone
+
+beam gaussian particle=alpha meanP=202.2177 nEvents=5170800 sigmaX=-2.5 sigmaY=-2.5 sigmaP=0 sigmaYp=-.1 sigmaXp=-.1 meanYp=0 meanXp=0 maxR=2.5
+#beam gaussian beamZ=0 particle=alpha meanMomentum=202.2177 nEvents=15000000 sigmaX=-1.5 sigmaY=-1.5 sigmaP=0 sigmaYp=1 sigmaXp=1 meanYp=0 meanXp=0 maxR=1.25
+#eliminate weighting
+
+
+trackcuts keep=alpha
+
+randomseed Time
+
+polycone collum innerRadius=$radius,$radius2 outerRadius=20,20 z=0,$length material=POLYVINYL_ALCOHOL color=0,0,1
+#vary z between 10-20mm, increments of 2mm
+
+
+#tubs collum length=$length innerRadius=.5 outerRadius=50 material=POLYVINYL_ALCOHOL color=0,0,1
+tubs Target outerRadius=3.175 material=Au length=.0020 color=0,1,1
+tubs top outerRadius=20 innerRadius=3.4 length=2 material=POLYVINYL_ALCOHOL color=0,1,0
+#tubs Foil outerRadius=20 material=Ag length=.001 color=1,0,0
+tubs sourcetop length=3 outerRadius=10 innerRadius=3.176 material=POLYCARBONATE color=1,0,1
+detector Detor height=10 width=10 length=.1 color=1,1,1 material=Si filename=$filename #normal height and width = 1.3
+#tubs cover length=.1 innerRadius=$radius outerRadius=5 material=STAINLESS-STEEL color=1,0,0
+
+place sourcetop z=1.65
+place Target z=.05
+place top z=4.4 
+place collum z=$dist
+#top z + (top+collum)/2 for tube
+#top z + top/2 for polycone
+
+#place cover z=30.5
+place Detor z=32.5 #x=$xOffset rotation=X45
+
+
+/vis/enable
+/vis/viewer/flush

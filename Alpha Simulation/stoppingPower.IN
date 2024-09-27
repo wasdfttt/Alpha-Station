@@ -1,0 +1,35 @@
+* MultipleScattering.g4bl TJR 1-FEB-2006 mu+ scattering
+#
+# Multiple scattering and ionization energy loss in materials.
+#
+# lengths are mm; momentum is MeV/c, density is gm/cm^3
+
+#c:\Users\chris\OneDrive\Desktop\Alphasim
+#"c:\Program Files\Muons, Inc\G4beamline\bin\g4bl" stoppingPower.IN
+#"c:\Program Files\Muons, Inc\G4beamline\bin\g4bl" - help
+
+physics QGSP_BIC
+material mair AIR,1 density=0.0001207
+
+param worldMaterial=mair
+param -unset filename="test" dist=.00025
+param filename=$filename dist=$dist
+
+beam gaussian particle=alpha meanP=202.2177 nEvents=10000 beamZ=0
+
+trackcuts keep=alpha
+
+randomseed Time
+
+tubs Target outerRadius=3.175 material=Au length=.0020 color=0,1,1
+tubs Foil outerRadius=20 material=Ag length=.001 color=1,0,0
+detector Detor height=10 width=10 length=.0005 color=1,1,1 material=Si filename=$filename 
+
+#place Target z=.05
+#place Foil z=.01
+place Detor copies=100 rename=Detor# z=$dist
+
+
+
+/vis/enable
+/vis/viewer/flush

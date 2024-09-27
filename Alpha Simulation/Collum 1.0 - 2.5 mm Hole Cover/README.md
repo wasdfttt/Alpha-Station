@@ -1,0 +1,2 @@
+# Alpha Simulation Collimator Cover With Hole
+This folder contains the alpha simulations for a collimator with inner radius 0.5 mm, outer radius 50.0 mm, and length 18 mm that has a cover over the sensor with a hole centered around the sensor of varying radii from 1.0 mm to 2.5 mm.
