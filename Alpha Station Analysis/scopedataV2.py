@@ -21,8 +21,8 @@ def gaussfit(x,a,mu,s): #Gaussian fit
     gauss = a * np.exp(-((x-mu)**2/(2*s**2))) 
     return gauss
 
-folder = 'C:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W8_redo\\300V' #"C:/Users/tjste/OneDrive/Documents/Alpha_Station/fbkSpaceSensorz/W14/W14/300V" #Import folder
-name = "FBK Space Sensor W8 300V" #Sensor name
+folder = 'C:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W9\\300V' #"C:/Users/tjste/OneDrive/Documents/Alpha_Station/fbkSpaceSensorz/W14/W14/300V" #Import folder
+name = "FBK Space Sensor W9 300V" #Sensor name
 
 #Extracts files from imported folder
 #csv data as 

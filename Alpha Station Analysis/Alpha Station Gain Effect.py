@@ -18,11 +18,11 @@ upperBound = upper bound of integration for finding charge
 sdDiff = how many standard deviations regarding the charge are accepted
 """
 
-sensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W8_redo\\300V'
+sensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W1\\240V'
 sensorFolder = []
-pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W8_pin_redo\\200V'
+pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W1_pin\\190V new'
 pinSensorFolder = []
-sensorName = 'FBK Space Sensor W8 300V vs W8 Pin 200V Gain Redo'
+sensorName = 'FBK Space Sensor W1 240V vs W1 Pin 190V Gain'
 skip = 1 #How many files to skip to make data processing faster, Ex: skip = 1 increments by 1, meaning all data will be processed
 pinSkip = 1
 resistance = 470
