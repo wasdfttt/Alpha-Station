@@ -21,8 +21,8 @@ def gaussfit(x,a,mu,s): #Gaussian fit
     gauss = a * np.exp(-((x-mu)**2/(2*s**2))) 
     return gauss
 
-folder = 'C:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W9\\300V' #"C:/Users/tjste/OneDrive/Documents/Alpha_Station/fbkSpaceSensorz/W14/W14/300V" #Import folder
-name = "FBK Space Sensor W9 300V" #Sensor name
+folder = 'C:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W1\\240V' #"C:/Users/tjste/OneDrive/Documents/Alpha_Station/fbkSpaceSensorz/W14/W14/300V" #Import folder
+name = "FBK Space Sensor W1 240V" #Sensor name
 
 #Extracts files from imported folder
 #csv data as 
@@ -127,7 +127,7 @@ def signalstuff(files):
 
 colorz = ['b', 'g', 'r', 'c', 'm', 'y']
 def traceploter(MeanVolt, MeanTime, Area, Pmax, j): #Plots mean time and voltage
-    plt.plot(MeanTime, MeanVolt, color=colorz[j], label='Average Trace ' + files[j][-5:])
+    plt.plot(MeanTime, MeanVolt, color=colorz[j], label='Average Trace ' + files[j][files[j].rfind('_') + 1:])
     plt.subplot(311)
 
 def histoareaplot(MeanVolt, MeanTime, Area, Pmax, j, nbins, minarea, maxarea): #Plots the charge
@@ -140,7 +140,7 @@ def histoareaplot(MeanVolt, MeanTime, Area, Pmax, j, nbins, minarea, maxarea): #
     a51, b51, c51 = popt51
     b51f=float("{0:.5f}".format(b51))
     c51f=float("{0:.5f}".format(c51))
-    equation51 = files[j][-5:]+ " mean= " + str(b51f)+ ' ,rms= '+ str(c51f)
+    equation51 = files[j][files[j].rfind('_') + 1:]+ " mean= " + str(b51f)+ ' ,rms= '+ str(c51f)
     i = np.linspace(xt51[0], xt51[-1], 200)
     yfit51=gaussfit(i, *popt51)
     plt.plot(i, yfit51, lw=1.0, color=colorz[j], label=equation51)
@@ -155,7 +155,7 @@ def histopmaxplot(MeanVolt, MeanTime, Area, Pmax, j, nbins, minvolt, maxvolt): #
     a52, b52, c52 = popt52
     b52f=float("{0:.5f}".format(b52))
     c52f=float("{0:.5f}".format(c52))
-    equation52 = files[j][-5:]+ " Mean= " + str(b52f) + ' ,rms= '+ str(c52f)
+    equation52 = files[j][files[j].rfind('_') + 1:]+ " Mean= " + str(b52f) + ' ,rms= '+ str(c52f)
     i = np.linspace(xt52[0], xt52[-1], 200)
     yfit52=gaussfit(i, *popt52)
     plt.plot(i, yfit52, lw=1.0, color=colorz[j], label=equation52)

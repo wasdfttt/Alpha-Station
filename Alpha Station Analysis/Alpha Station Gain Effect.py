@@ -18,11 +18,11 @@ upperBound = upper bound of integration for finding charge
 sdDiff = how many standard deviations regarding the charge are accepted
 """
 
-sensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W1\\240V'
+sensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W9\\300V'
 sensorFolder = []
-pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W1_pin\\190V new'
+pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W8_pin_redo\\200V'
 pinSensorFolder = []
-sensorName = 'FBK Space Sensor W1 240V vs W1 Pin 190V Gain'
+sensorName = 'FBK Space Sensor W9 300V vs W8 Pin 200V Gain'
 skip = 1 #How many files to skip to make data processing faster, Ex: skip = 1 increments by 1, meaning all data will be processed
 pinSkip = 1
 resistance = 470
@@ -104,8 +104,8 @@ def getData(folder, directory, skip = skip, lowerBound = lowerBound, upperBound 
 
         charge = auc(integrationTime, integrationVoltage)/resistance #Integrates the current I = V/R with respect to time
         charges.append(charge) #Appends the charge for each file to list charges
-        chargesDF = pd.DataFrame(charges, columns = ['Charges'])
-    
+        
+    chargesDF = pd.DataFrame(charges, columns = ['Charges'])
     return chargesDF #Returns a list of charges for the files read
 
 def gaussianFit(x, amplitude, mu, sigma):
@@ -125,6 +125,8 @@ def histogramPlot(folder, directory, numBins = 200, skip = skip, pinMeanDiff = 1
     From the trimmed charges, it will divide by the pin sensor's average charge pinMeanDiff and obtain a list of gains. Then, it fits the gaussian distribtuion of the resulting gain
     and propagates the error to obtain the gain's uncertainty. Finally, it plots a histogram of the gain as well as the gaussian distribution. 
     """
+    plotMeans = []
+    plotRMS = []
     for i in range(len(folder)): #Iterates over every folder in the directory
         charges = getData(folder[i], directory, skip, lowerBound, upperBound) #Gathers the charges from each folder in the directory
         print('First gaussian fit on charge')
@@ -162,6 +164,10 @@ def histogramPlot(folder, directory, numBins = 200, skip = skip, pinMeanDiff = 1
         else:
             plt.plot(xFit, yFit, lw = 2, color = colours[i], label=fileLabel)
         #print(gaussianFitParameters, gaussianFitUncertainties)
+        plotMeans.append(float(meanCharge))
+        plotRMS.append(float(meanChargeRMS))
+    print(plotMeans)
+    print(plotRMS)
 
 def pinHistogramPlot(folder, directory, numBins = 200, skip = pinSkip, combineFolders = True): #Used for combining folders and returning the mean and RMS
     """
