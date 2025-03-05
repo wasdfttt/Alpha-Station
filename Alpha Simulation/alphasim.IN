@@ -4,9 +4,10 @@
 #
 # lengths are mm; momentum is MeV/c, density is gm/cm^3
 
-#c:\Users\chris\OneDrive\Desktop\Alphasim
+#cd c:\Users\chris\OneDrive\Desktop\Alphasim
 #"c:\Program Files\Muons, Inc\G4beamline\bin\g4bl" alphasim.IN
 #"c:\Program Files\Muons, Inc\G4beamline\bin\g4bl" - help
+#help [command]
 
 physics QGSP_BIC
 material mair AIR,1 density=0.0001207

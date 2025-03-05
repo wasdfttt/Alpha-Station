@@ -21,14 +21,14 @@ def gaussfit(x,a,mu,s): #Gaussian fit
     gauss = a * np.exp(-((x-mu)**2/(2*s**2))) 
     return gauss
 
-folder = 'C:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W1\\240V' #"C:/Users/tjste/OneDrive/Documents/Alpha_Station/fbkSpaceSensorz/W14/W14/300V" #Import folder
-name = "FBK Space Sensor W1 240V" #Sensor name
+folder = 'C:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\200micron_redo\\600V' #"C:/Users/tjste/OneDrive/Documents/Alpha_Station/fbkSpaceSensorz/W14/W14/300V" #Import folder
+name = "BNL Sensor 200 μm Redo 600V" #Sensor name
 
 #Extracts files from imported folder
 #csv data as 
 files = [x for x in os.listdir(folder)] #Grabs names from the folder
 d = {}
-skip=1  
+skip=1
 #nbins = 150
 print(files) 
 os.chdir(folder)
@@ -55,7 +55,7 @@ def signalstuff(files):
 
         #Gathers the time and voltage from the .csv file
         time = data[j][0][:]*1e9 #Converts to ns
-        volt = data[j][1][:]*1e3 #Converts to mV
+        volt = data[j][1][:]*1e3*-1 #Converts to mV
 
         #a1 = np.max(volt)
         #if a1 > 0.10:
@@ -65,21 +65,21 @@ def signalstuff(files):
         #Pmax.append(a1)
         #volt5.append(volt)
         #time5.append(time)
-        
+        #"""
         ped_bounds5=[]
         for ij in range(len(time)):
-               if time[ij] > -10 and time[ij] < -1.5: #Records the baseline voltage from -10 to -1.5 ns 
+               if time[ij] > -25 and time[ij] < -10: #Records the baseline voltage from -10 to -1.5 ns 
                  bounds = volt[ij]
                  ped_bounds5.append(bounds)
                else:
                    continue
 
         Ped = np.mean(ped_bounds5) # determine baseline 
-        corr= volt - Ped #Subtracts the baseline voltage from all the voltages
+        #"""
+        corr= volt - 0#Ped #Subtracts the baseline voltage from all the voltages
         a1 = np.max(corr) #Finds the maximum voltage
         #if a1>35: #Removes higher outlier voltages, trigger level removes the lower voltages
         #    continue
-
 
 
 
@@ -91,7 +91,7 @@ def signalstuff(files):
 
  
         for jj in range (len(time)):
-                if time[jj] > -1 and time[jj] < 6.5: #Finds the corrected voltage in the time range of -1 to 6.5 ns
+                if time[jj] > -10 and time[jj] < 10: #Finds the corrected voltage in the time range of -1 to 6.5 ns, BNL -2 to 15
                     v=corr[jj]#volt[jj]
                     t=time[jj]
                     volt1.append(v)#/50) afterdiscusion this factor of 50 ohms is wrong

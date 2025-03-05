@@ -5,6 +5,7 @@ import pandas as pd
 import scipy as sp
 from sklearn.metrics import auc
 from matplotlib.pyplot import cm
+import datetime
 
 """
 sensorDirectory = input directory of the LGAD
@@ -18,16 +19,18 @@ upperBound = upper bound of integration for finding charge
 sdDiff = how many standard deviations regarding the charge are accepted
 """
 
-sensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W9\\300V'
+now = datetime.datetime.now()
+print(now.strftime("%Y-%m-%d %H:%M:%S"))
+sensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\200micron_redo\\600V'
 sensorFolder = []
-pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W8_pin_redo\\200V'
+pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W14_pin\\250V'
 pinSensorFolder = []
-sensorName = 'FBK Space Sensor W9 300V vs W8 Pin 200V Gain'
+sensorName = 'BNL 200 μm Redo 600V vs W14 Pin 250V Gain'
 skip = 1 #How many files to skip to make data processing faster, Ex: skip = 1 increments by 1, meaning all data will be processed
 pinSkip = 1
 resistance = 470
-lowerBound = -1
-upperBound = 6.5
+lowerBound = -10 #-1 to 6.5
+upperBound = 10
 sdDiff = 3
 
 os.chdir(sensorDirectory)
@@ -42,7 +45,7 @@ for x in os.listdir(): #Creates a list of the folder names in the pin sensor dir
 
 print(pinSensorFolder)
 
-def getData(folder, directory, skip = skip, lowerBound = lowerBound, upperBound = upperBound): #Gets the data from an inputted folder
+def getData(folder, directory, skip = skip, lowerBound = lowerBound, upperBound = upperBound, invert = False): #Gets the data from an inputted folder
     """
     getData takes an input directory that has a list of folders within it and takes data from each of those folders in the directory.
     It takes an input skip that will determine how many files it will retrieve data from within each folder. Ex: skip = 1 means it will take data from each file,
@@ -79,12 +82,14 @@ def getData(folder, directory, skip = skip, lowerBound = lowerBound, upperBound 
     for i in range(0, len(data)):
         time = data[i]['Time'] * 1e9 #Accessing time and voltage from the list data and converting to ns and mV respectively
         voltage = data[i]['Voltage'] * 1e3
+        if(invert == True):
+            voltage = voltage * -1
         #print(data[i]['Time'])
         #print(time)
         
         baselineVoltage = []
         for j in range(len(time)):
-            if(time[j] > -10 and time[j] < -1.5):
+            if(time[j] > -25 and time[j] < lowerBound - 1): #-10 to -1.5
                 baselineVoltage.append(voltage[j]) #Appends the voltages for times > 10 and < -1.5 ns to baselineVoltage
         
         meanBaselineVoltage = np.mean(baselineVoltage) #Calculates the average baseline voltage for each data frame in data
@@ -128,7 +133,7 @@ def histogramPlot(folder, directory, numBins = 200, skip = skip, pinMeanDiff = 1
     plotMeans = []
     plotRMS = []
     for i in range(len(folder)): #Iterates over every folder in the directory
-        charges = getData(folder[i], directory, skip, lowerBound, upperBound) #Gathers the charges from each folder in the directory
+        charges = getData(folder[i], directory, skip, lowerBound, upperBound, True) #Gathers the charges from each folder in the directory
         print('First gaussian fit on charge')
         lgadGaussianFitParameters, nonZeroBins = fitCurve(charges, numBins) #Finds the gaussian fit parameters from the lgad charges
         sdAdd = lgadGaussianFitParameters[1] + (sdDiff * lgadGaussianFitParameters[2]) #Finds the minimum and maximum allowed values that will fit within the sdDiff sigma range
@@ -179,7 +184,7 @@ def pinHistogramPlot(folder, directory, numBins = 200, skip = pinSkip, combineFo
         combinedPinSensorCharges = []
         print('Starting combined sensors')
         for i in range(len(folder)):
-            pinSensorCharges.append(getData(folder[i], directory, skip, lowerBound, upperBound)['Charges'].tolist())
+            pinSensorCharges.append(getData(folder[i], directory, skip, lowerBound=-1, upperBound=6.5)['Charges'].tolist())
         for i in pinSensorCharges:
             combinedPinSensorCharges += i
         combinedPinSensorChargesDF = pd.DataFrame(combinedPinSensorCharges, columns = ['Charges'])
@@ -220,7 +225,9 @@ def fitCurve(charges, numBins):
 pinMeanDiff, pinrmsDiff = pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, pinSkip, True)
 #lgadMeanDiff, lgadrmsDiff = getLGADGaussianParameters(sensorFolder, sensorDirectory, 200, skip)
 #histogramPlot(sensorFolder, sensorDirectory, 200, skip)
-histogramPlot(sensorFolder, sensorDirectory, 200, skip, pinMeanDiff, pinrmsDiff)
+histogramPlot(sensorFolder, sensorDirectory, 200, skip, pinMeanDiff, pinrmsDiff, False)
+now = datetime.datetime.now()
+print(now.strftime("%Y-%m-%d %H:%M:%S"))
 plt.title(sensorName)
 plt.xlabel('Gain')
 plt.ylabel('Frequency')
