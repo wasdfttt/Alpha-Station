@@ -21,17 +21,20 @@ sdDiff = how many standard deviations regarding the charge are accepted
 
 now = datetime.datetime.now()
 print(now.strftime("%Y-%m-%d %H:%M:%S"))
-sensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\200micron_redo\\600V'
+sensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W9 new prod\\150V'
 sensorFolder = []
-pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W14_pin\\250V'
+pinSensorDirectory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W1_pin\\190V'
 pinSensorFolder = []
-sensorName = 'BNL 200 μm Redo 600V vs W14 Pin 250V Gain'
+sensorName = 'W9 New Prod 150V vs W1 Pin 190V Gain'
 skip = 1 #How many files to skip to make data processing faster, Ex: skip = 1 increments by 1, meaning all data will be processed
 pinSkip = 1
 resistance = 470
-lowerBound = -10 #-1 to 6.5
-upperBound = 10
+lowerBound = -1 #-1 to 6.5
+upperBound = 6.5
 sdDiff = 3
+minPINCharge = 0
+minCharge = .1
+PINCharges = 6000
 
 os.chdir(sensorDirectory)
 for x in os.listdir(): #Creates a list of the folder names in the sensor directory
@@ -45,7 +48,7 @@ for x in os.listdir(): #Creates a list of the folder names in the pin sensor dir
 
 print(pinSensorFolder)
 
-def getData(folder, directory, skip = skip, lowerBound = lowerBound, upperBound = upperBound, invert = False): #Gets the data from an inputted folder
+def getData(folder, directory, skip = skip, lowerBound = lowerBound, upperBound = upperBound, invert = False, minCharge = minCharge): #Gets the data from an inputted folder
     """
     getData takes an input directory that has a list of folders within it and takes data from each of those folders in the directory.
     It takes an input skip that will determine how many files it will retrieve data from within each folder. Ex: skip = 1 means it will take data from each file,
@@ -89,7 +92,7 @@ def getData(folder, directory, skip = skip, lowerBound = lowerBound, upperBound 
         
         baselineVoltage = []
         for j in range(len(time)):
-            if(time[j] > -25 and time[j] < lowerBound - 1): #-10 to -1.5
+            if(time[j] > -10 and time[j] < -1.5): #-10 to -1.5, determines the baseline voltage
                 baselineVoltage.append(voltage[j]) #Appends the voltages for times > 10 and < -1.5 ns to baselineVoltage
         
         meanBaselineVoltage = np.mean(baselineVoltage) #Calculates the average baseline voltage for each data frame in data
@@ -101,15 +104,19 @@ def getData(folder, directory, skip = skip, lowerBound = lowerBound, upperBound 
             if(time[j] > lowerBound and time[j] < upperBound):
                 integrationTime.append(time[j])
                 integrationVoltage.append(correctedVoltage[j])
-            else:
-                continue
+            #else:
+            #    continue
         
         #maxVoltage = np.max(correctedVoltage) #Finds the maximum corrected voltage
         #maxVoltages.append(maxVoltage)
 
         charge = auc(integrationTime, integrationVoltage)/resistance #Integrates the current I = V/R with respect to time
+
+        if charge < minCharge:
+            continue
+
         charges.append(charge) #Appends the charge for each file to list charges
-        
+
     chargesDF = pd.DataFrame(charges, columns = ['Charges'])
     return chargesDF #Returns a list of charges for the files read
 
@@ -121,7 +128,7 @@ def gaussianFit(x, amplitude, mu, sigma):
     return y
 
 colours = cm.rainbow(np.linspace(0,1,6)) #Colours to be used when plotting
-def histogramPlot(folder, directory, numBins = 200, skip = skip, pinMeanDiff = 1, pinrmsDiff = 0, isPin = False): #Used for iterating over entire directory and the folders inside of it
+def histogramPlot(folder, directory, numBins = 200, skip = skip, pinMeanDiff = 1, pinrmsDiff = 0, isPin = False, PINCharges = PINCharges): #Used for iterating over entire directory and the folders inside of it
     """
     histogramPlot takes an input directory and a list of folders within it to plot the gain of the sensor on a rainbow colour map scaling. 
     It uses numBins to calculate the histogram and gaussian fit. The function calls getData using the folder, directory, and skip to obtain charges.
@@ -133,48 +140,51 @@ def histogramPlot(folder, directory, numBins = 200, skip = skip, pinMeanDiff = 1
     plotMeans = []
     plotRMS = []
     for i in range(len(folder)): #Iterates over every folder in the directory
-        charges = getData(folder[i], directory, skip, lowerBound, upperBound, True) #Gathers the charges from each folder in the directory
-        print('First gaussian fit on charge')
-        lgadGaussianFitParameters, nonZeroBins = fitCurve(charges, numBins) #Finds the gaussian fit parameters from the lgad charges
-        sdAdd = lgadGaussianFitParameters[1] + (sdDiff * lgadGaussianFitParameters[2]) #Finds the minimum and maximum allowed values that will fit within the sdDiff sigma range
-        sdSub = lgadGaussianFitParameters[1] - (sdDiff * lgadGaussianFitParameters[2])
-        sdCharges = []
-        print('Trimming data')
-        for charge in charges['Charges']:
-            if sdSub <= charge and charge <= sdAdd:
-                sdCharges.append(charge)
-        print('Second gaussian fit on data')
-        newCharges = pd.DataFrame(sdCharges, columns = ['sdCharges'])
-        lgadGaussianFitParameters, nonZeroBins = fitCurve(newCharges['sdCharges'], numBins)
-        
-        print('Calculating gain')
-        newCharges = newCharges.assign(Gain = newCharges['sdCharges']/pinMeanDiff) #Divides pinMeanDiff from each of the new sdCharges to obtain gain
-        plt.hist(x = newCharges['Gain'], density = False, bins = numBins, color = colours[i], histtype= 'step') #Creates a histogram for the gain
-        #plt.hist(x = newCharges['sdCharges'], density = False, bins = numBins, color = colours[i], histtype= 'step') #Creates a histogram for the charges
-        print('Plotting data from: ' + folder[i])
-        gaussianFitParameters, nonZeroBins = fitCurve(newCharges['Gain'], numBins) #Finds the gaussian fit parameters from the gain
-        
-        #meanCharge = f'{lgadGaussianFitParameters[1]:.5f}'#Used for plotting just the charges
-        #meanChargeRMS = f'{lgadGaussianFitParameters[2]:.5f}'
+        try:
+            charges = getData(folder[i], directory, skip, lowerBound, upperBound, False) #Gathers the charges from each folder in the directory
+            print('First gaussian fit on charge')
+            lgadGaussianFitParameters, nonZeroBins = fitCurve(charges, numBins) #Finds the gaussian fit parameters from the lgad charges
+            sdAdd = lgadGaussianFitParameters[1] + (sdDiff * lgadGaussianFitParameters[2]) #Finds the minimum and maximum allowed values that will fit within the sdDiff sigma range
+            sdSub = lgadGaussianFitParameters[1] - (sdDiff * lgadGaussianFitParameters[2])
+            sdCharges = []
+            print('Trimming data')
+            for charge in charges['Charges']:
+                if sdSub <= charge and charge <= sdAdd:
+                    sdCharges.append(charge)
+            print('Second gaussian fit on data')
+            newCharges = pd.DataFrame(sdCharges, columns = ['sdCharges'])
+            lgadGaussianFitParameters, nonZeroBins = fitCurve(newCharges['sdCharges'], numBins)
 
-        meanCharge = f'{gaussianFitParameters[1]:.5f}' #Truncates the mean charge and RMS
-        meanChargeRMS = f'{gaussianFitParameters[1] * np.sqrt((pinrmsDiff / pinMeanDiff)**2 + (lgadGaussianFitParameters[2] / lgadGaussianFitParameters[1])**2):.5f}' #RMS = mean * sqrt[(pin RMS/pin mean)^2 + (LGAD RMS/LGAD mean)^2]
-        fileLabel = folder[i][folder[i].rfind('_') + 1:] + ', mean = ' + meanCharge + ', rms = ' + meanChargeRMS + ', ' + str(len(newCharges['sdCharges'])) + ' pulses' #Creates the label for the legend
-        xFit = np.linspace(nonZeroBins[0], nonZeroBins[-1], 200) #Creates a linear space from the lowest to highest non zero frequency bin
-        #yFit = gaussianFit(xFit, *lgadGaussianFitParameters)
-        yFit = gaussianFit(xFit, *gaussianFitParameters) #Creates the gaussian fit for the parameters estimated by curve_fit
-        
-        if(isPin == True):
-            plt.plot(xFit, yFit, lw = 2, color = colours[-i-2], label=fileLabel) #Plots the gaussian fit
-        else:
-            plt.plot(xFit, yFit, lw = 2, color = colours[i], label=fileLabel)
-        #print(gaussianFitParameters, gaussianFitUncertainties)
-        plotMeans.append(float(meanCharge))
-        plotRMS.append(float(meanChargeRMS))
+            print('Calculating gain')
+            newCharges = newCharges.assign(Gain = newCharges['sdCharges']/pinMeanDiff) #Divides pinMeanDiff from each of the new sdCharges to obtain gain
+            plt.hist(x = newCharges['Gain'], density = False, bins = numBins, color = colours[i], histtype= 'step') #Creates a histogram for the gain
+            #plt.hist(x = newCharges['sdCharges'], density = False, bins = numBins, color = colours[i], histtype= 'step') #Creates a histogram for the charges
+            print('Plotting data from: ' + folder[i])
+            gaussianFitParameters, nonZeroBins = fitCurve(newCharges['Gain'], numBins) #Finds the gaussian fit parameters from the gain
+            
+            #meanCharge = f'{lgadGaussianFitParameters[1]:.5f}'#Used for plotting just the charges
+            #meanChargeRMS = f'{lgadGaussianFitParameters[2]:.5f}'
+
+            meanCharge = f'{gaussianFitParameters[1]:.5f}' #Truncates the mean charge and RMS
+            meanChargeRMS = f'{gaussianFitParameters[1] * np.sqrt((pinrmsDiff / pinMeanDiff / np.sqrt(PINCharges))**2 + (lgadGaussianFitParameters[2] / lgadGaussianFitParameters[1] / np.sqrt(len(newCharges['sdCharges'])))**2):.5f}' #RMS = mean * sqrt[(pin RMS/pin mean)^2 + (LGAD RMS/LGAD mean)^2]
+            fileLabel = folder[i][folder[i].rfind('_') + 1:] + ', mean = ' + meanCharge + ', rms = ' + meanChargeRMS + ', ' + str(len(newCharges['sdCharges'])) + ' pulses' #Creates the label for the legend
+            xFit = np.linspace(nonZeroBins[0], nonZeroBins[-1], 200) #Creates a linear space from the lowest to highest non zero frequency bin
+            #yFit = gaussianFit(xFit, *lgadGaussianFitParameters)
+            yFit = gaussianFit(xFit, *gaussianFitParameters) #Creates the gaussian fit for the parameters estimated by curve_fit
+            
+            if(isPin == True):
+                plt.plot(xFit, yFit, lw = 2, color = colours[-i-2], label=fileLabel) #Plots the gaussian fit
+            else:
+                plt.plot(xFit, yFit, lw = 2, color = colours[i], label=fileLabel)
+            #print(gaussianFitParameters, gaussianFitUncertainties)
+            plotMeans.append(float(meanCharge))
+            plotRMS.append(float(meanChargeRMS))
+        except:
+            print('Failed Gaussian fit')
     print(plotMeans)
     print(plotRMS)
 
-def pinHistogramPlot(folder, directory, numBins = 200, skip = pinSkip, combineFolders = True): #Used for combining folders and returning the mean and RMS
+def pinHistogramPlot(folder, directory, numBins = 200, skip = pinSkip, combineFolders = True, minCharge = minPINCharge): #Used for combining folders and returning the mean and RMS
     """
     pinHistogramPlot does almost the same as histogramPlot except it combines the folders within the directory as the data for pin sensors does not change much
     for differing angles. However, pinHistogramPlot can be called with combineFolders = False which calls histogramPlot.
@@ -184,7 +194,7 @@ def pinHistogramPlot(folder, directory, numBins = 200, skip = pinSkip, combineFo
         combinedPinSensorCharges = []
         print('Starting combined sensors')
         for i in range(len(folder)):
-            pinSensorCharges.append(getData(folder[i], directory, skip, lowerBound=-1, upperBound=6.5)['Charges'].tolist())
+            pinSensorCharges.append(getData(folder[i], directory, skip, lowerBound=-1, upperBound=6.5, minCharge=minCharge)['Charges'].tolist())
         for i in pinSensorCharges:
             combinedPinSensorCharges += i
         combinedPinSensorChargesDF = pd.DataFrame(combinedPinSensorCharges, columns = ['Charges'])
@@ -222,7 +232,7 @@ def fitCurve(charges, numBins):
     return gaussianFitParameters, nonZeroBins
 
 #pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, pinSkip, False)
-pinMeanDiff, pinrmsDiff = pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, pinSkip, True)
+pinMeanDiff, pinrmsDiff = pinHistogramPlot(pinSensorFolder, pinSensorDirectory, 200, pinSkip, True, minPINCharge)
 #lgadMeanDiff, lgadrmsDiff = getLGADGaussianParameters(sensorFolder, sensorDirectory, 200, skip)
 #histogramPlot(sensorFolder, sensorDirectory, 200, skip)
 histogramPlot(sensorFolder, sensorDirectory, 200, skip, pinMeanDiff, pinrmsDiff, False)

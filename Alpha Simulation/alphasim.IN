@@ -22,7 +22,7 @@ param -unset length=20 filename="Polycone .75mmx1mm 20mm 0 deg hit or miss" radi
 #param -unset length=18 filename="Collum .5mmx50mm 18mm 0 deg 1.0mm cover" radius=1.0
 param length=$length dist=5.4 filename=$filename
 #dist=$length/2+5.4 for cyl
-$dist=5.4 for polycone
+#dist=5.4 for polycone
 
 beam gaussian particle=alpha meanP=202.2177 nEvents=5170800 sigmaX=-2.5 sigmaY=-2.5 sigmaP=0 sigmaYp=-.1 sigmaXp=-.1 meanYp=0 meanXp=0 maxR=2.5
 #beam gaussian beamZ=0 particle=alpha meanMomentum=202.2177 nEvents=15000000 sigmaX=-1.5 sigmaY=-1.5 sigmaP=0 sigmaYp=1 sigmaXp=1 meanYp=0 meanXp=0 maxR=1.25

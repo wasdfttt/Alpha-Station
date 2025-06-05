@@ -15,14 +15,15 @@ import itertools
 import scipy.optimize
 import random
 import matplotlib.colors as mcolors
+from matplotlib.pyplot import cm
 
 
 def gaussfit(x,a,mu,s): #Gaussian fit
     gauss = a * np.exp(-((x-mu)**2/(2*s**2))) 
     return gauss
 
-folder = 'C:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\200micron_redo\\600V' #"C:/Users/tjste/OneDrive/Documents/Alpha_Station/fbkSpaceSensorz/W14/W14/300V" #Import folder
-name = "BNL Sensor 200 μm Redo 600V" #Sensor name
+folder = 'C:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Data\\W9 new prod\\150V' #Import Folder, YOU MAY NEED TO CHANGE THIS
+name = "FBK W9 New Prod 150V" #Sensor name, YOU MAY NEED TO CHANGE THIS
 
 #Extracts files from imported folder
 #csv data as 
@@ -32,7 +33,7 @@ skip=1
 #nbins = 150
 print(files) 
 os.chdir(folder)
-def signalstuff(files):
+def signalstuff(files, increment):
     os.chdir(folder)
     csvs = [x for x in os.listdir(files) if x.endswith('.csv')] #Creates list of file names ending with .csv
 
@@ -55,20 +56,19 @@ def signalstuff(files):
 
         #Gathers the time and voltage from the .csv file
         time = data[j][0][:]*1e9 #Converts to ns
-        volt = data[j][1][:]*1e3*-1 #Converts to mV
-
-        #a1 = np.max(volt)
+        volt = data[j][1][:]*1e3 #Converts to mV
+        a1 = np.max(volt)
         #if a1 > 0.10:
         #    volt2.append(volt)
         #    time2.append(time)
 
-        #Pmax.append(a1)
+        Pmax.append(a1)
         #volt5.append(volt)
         #time5.append(time)
         #"""
         ped_bounds5=[]
         for ij in range(len(time)):
-               if time[ij] > -25 and time[ij] < -10: #Records the baseline voltage from -10 to -1.5 ns 
+               if time[ij] > -10 and time[ij] < -5: #Records the baseline voltage from -10 to -1.5 ns, YOU MAY NEED TO CHANGE THIS
                  bounds = volt[ij]
                  ped_bounds5.append(bounds)
                else:
@@ -76,9 +76,9 @@ def signalstuff(files):
 
         Ped = np.mean(ped_bounds5) # determine baseline 
         #"""
-        corr= volt - 0#Ped #Subtracts the baseline voltage from all the voltages
+        corr= volt - Ped #Subtracts the baseline voltage from all the voltages
         a1 = np.max(corr) #Finds the maximum voltage
-        #if a1>35: #Removes higher outlier voltages, trigger level removes the lower voltages
+        #if a1>100: #Removes higher outlier voltages, trigger level removes the lower voltages
         #    continue
 
 
@@ -87,25 +87,44 @@ def signalstuff(files):
         #print(corr)
         volt1 = []
         time1 = []
-
-
- 
+        volt2 = []
+        time2 = []
+        
         for jj in range (len(time)):
-                if time[jj] > -10 and time[jj] < 10: #Finds the corrected voltage in the time range of -1 to 6.5 ns, BNL -2 to 15
+                #if increment == 0 or increment == 1:
+                #    time[jj] += 10.25
+                #if increment == 2 or increment == 3:
+                #    time[jj] += 11.5
+                if time[jj] > -1.5 and time[jj] < 6.5: #Finds the corrected voltage in the time range of -1 to 6.5 ns, BNL -2 to 15, YOU MAY NEED TO CHANGE THIS
                     v=corr[jj]#volt[jj]
                     t=time[jj]
                     volt1.append(v)#/50) afterdiscusion this factor of 50 ohms is wrong
                     time1.append(t)
-
+                    volt2.append(abs(v))
+                #if time[jj] > 1 and time[jj] <350:
+                #    volt2.append(abs(corr[jj]))
+                #    time2.append(time[jj])
                 else: 
                     continue        
+        
+        
+        area = auc(time1,volt1)/470#Q = integral(I)dt = integral(V/R)dt
+
+        #for i in range(len(volt2)):
+        #    volt1.append(volt2[i])
+        #    time1.append(time2[i])
 
         
-        area = auc(time1,volt1)/470 #Q = integral(I)dt = integral(V/R)dt
-
-        #if area>.4 or area<.1: #Filters outlier charges that are too high or low
-        #   continue
-
+        if area<0.1:# and increment == 0: #Filters outlier charges that are too high or low, YOU MAY NEED TO CHANGE THIS
+           continue
+        """
+        if (area<1 or area>2) and increment == 1:
+            continue
+        if (area<2 or area>3) and increment == 2:
+            continue
+        if area<3 and increment == 3:
+            continue
+        """
         avetime.append(time1)
         avepuls.append(volt1)
         Pmax.append(a1)
@@ -125,7 +144,7 @@ def signalstuff(files):
     return mv, mt, Area1, Pmax
 
 
-colorz = ['b', 'g', 'r', 'c', 'm', 'y']
+colorz = cm.rainbow(np.linspace(0,1,8))
 def traceploter(MeanVolt, MeanTime, Area, Pmax, j): #Plots mean time and voltage
     plt.plot(MeanTime, MeanVolt, color=colorz[j], label='Average Trace ' + files[j][files[j].rfind('_') + 1:])
     plt.subplot(311)
@@ -136,14 +155,17 @@ def histoareaplot(MeanVolt, MeanTime, Area, Pmax, j, nbins, minarea, maxarea): #
     xh51 = np.where(yhist51 > 0)[0]
     yh51 = yhist51[xh51]
     xt51 = xhist51[xh51]
-    popt51, pcov51 = curve_fit(gaussfit, xt51, yh51)#, [.15, 0.10, 0.001])
-    a51, b51, c51 = popt51
-    b51f=float("{0:.5f}".format(b51))
-    c51f=float("{0:.5f}".format(c51))
-    equation51 = files[j][files[j].rfind('_') + 1:]+ " mean= " + str(b51f)+ ' ,rms= '+ str(c51f)
-    i = np.linspace(xt51[0], xt51[-1], 200)
-    yfit51=gaussfit(i, *popt51)
-    plt.plot(i, yfit51, lw=1.0, color=colorz[j], label=equation51)
+    try:
+        popt51, pcov51 = curve_fit(gaussfit, xt51, yh51)#, [.15, 0.10, 0.001])
+        a51, b51, c51 = popt51
+        b51f=float("{0:.5f}".format(b51))
+        c51f=float("{0:.5f}".format(c51))
+        equation51 = files[j][files[j].rfind('_') + 1:]+ " mean= " + str(b51f)+ ' ,rms= '+ str(c51f)
+        i = np.linspace(xt51[0], xt51[-1], 200)
+        yfit51=gaussfit(i, *popt51)
+        plt.plot(i, yfit51, lw=1.0, color=colorz[j], label=equation51)
+    except:
+        print('Failed Gaussian Fit')
 
 def histopmaxplot(MeanVolt, MeanTime, Area, Pmax, j, nbins, minvolt, maxvolt): #Plots the voltage
     y52=plt.hist(Pmax, density=False, bins=nbins, color=colorz[j], histtype='step', range=(minvolt, maxvolt))
@@ -151,14 +173,17 @@ def histopmaxplot(MeanVolt, MeanTime, Area, Pmax, j, nbins, minvolt, maxvolt): #
     xh52 = np.where(yhist52 > 0)[0]
     yh52 = yhist52[xh52]
     xt52 = xhist52[xh52]
-    popt52, pcov52 = curve_fit(gaussfit, xt52, yh52, [30, 20, 50])
-    a52, b52, c52 = popt52
-    b52f=float("{0:.5f}".format(b52))
-    c52f=float("{0:.5f}".format(c52))
-    equation52 = files[j][files[j].rfind('_') + 1:]+ " Mean= " + str(b52f) + ' ,rms= '+ str(c52f)
-    i = np.linspace(xt52[0], xt52[-1], 200)
-    yfit52=gaussfit(i, *popt52)
-    plt.plot(i, yfit52, lw=1.0, color=colorz[j], label=equation52)
+    try:
+        popt52, pcov52 = curve_fit(gaussfit, xt52, yh52, [30, 20, 50])
+        a52, b52, c52 = popt52
+        b52f=float("{0:.5f}".format(b52))
+        c52f=float("{0:.5f}".format(c52))
+        equation52 = files[j][files[j].rfind('_') + 1:]+ " Mean= " + str(b52f) + ' ,rms= '+ str(c52f)
+        i = np.linspace(xt52[0], xt52[-1], 200)
+        yfit52=gaussfit(i, *popt52)
+        plt.plot(i, yfit52, lw=1.0, color=colorz[j], label=equation52)
+    except:
+        print('Failed Gaussian Fit')
 
 
 MeanVolts, MeanTimes, Areas, Pmaxs = [[] for _ in range(4)]
@@ -166,7 +191,7 @@ MeanVolts, MeanTimes, Areas, Pmaxs = [[] for _ in range(4)]
 MeanVoltsall, MeanTimesall, Areasall, Pmaxsall, rangevolt, rangearea = [[] for _ in range(6)]
 
 for j in range(len(files)): #Converting the data in to list form to be plotted
-    MeanVolt, MeanTime, Area, Pmax = signalstuff(files[j])
+    MeanVolt, MeanTime, Area, Pmax = signalstuff(files[j], j)
     MeanVoltsall.append(MeanVolt)
     MeanTimesall.append(MeanTime)
     Areasall.append(Area)
@@ -193,7 +218,7 @@ plt.xticks(fontsize=15, rotation=0)
 plt.yticks(fontsize=15, rotation=0)
 plt.xlabel('Time [ns]', fontsize=18)
 plt.ylabel('Voltage[mV]', fontsize=18)
-plt.legend(loc='upper left', fontsize=14)
+plt.legend(loc='upper right', fontsize=14)
 
 
 plt.subplot(312)
@@ -206,7 +231,7 @@ plt.xticks(fontsize=15, rotation=0)
 plt.yticks(fontsize=15, rotation=0)
 plt.xlabel('Area [pC]', fontsize=18)
 plt.ylabel('Frequency', fontsize=18)
-plt.legend(loc='upper left', fontsize=14)
+plt.legend(loc='upper right', fontsize=14)
 
 
 
@@ -221,7 +246,7 @@ plt.yticks(fontsize=15, rotation=0)
 plt.xlabel('Voltage [mV]', fontsize=18)
 plt.ylabel('Frequency', fontsize=18)
 
-plt.legend(loc='upper left', fontsize=14)
+plt.legend(loc='upper right', fontsize=14)
 plt.tight_layout()
 
 

@@ -27,8 +27,8 @@ goldS/=10
 siliconS/=10
 airS/=10
 
-silverLength = .001
-goldLength = .002
+silverLength = .000 #.001
+goldLength = .001 #.002
 airLength = 30
 
 dESilver = silverS * silverLength

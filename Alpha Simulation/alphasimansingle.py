@@ -9,7 +9,7 @@ This code is used to anaylyze the simulation results to obtain the distribution 
 
 #these are the only variables you should need to change while analysing the data everything else should be automated i think
 directory = 'c:\\Users\\chris\\OneDrive\\Desktop\\Alphasim\\Collum 10 - 20 mm'
-detector_name = "Collum .5mmx50mm 10mm 0 deg hit or miss"
+detector_name = "Collum .5mmx50mm 20mm 0 deg hit or miss"
 file_name = detector_name
 os.chdir(directory)
 file_placeholder = open(file_name + ".txt", 'r')
@@ -117,5 +117,5 @@ axis[2].set_title("Position on Detector and Board\n"+ detector_name)
 
 print(file_name, "\nHits:", len(justx),"\nMisses:", len(missjustx),"\nTotal", len(justx) + len(missjustx))
 
-plt.savefig(directory + "\\" + file_name + '.png',format='png')
+#plt.savefig(directory + "\\" + file_name + '.png',format='png')
 #plt.show()
